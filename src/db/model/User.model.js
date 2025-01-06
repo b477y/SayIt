@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { roleTypes } from "../../middlewares/auth.middleware.js";
 
 const userSchema = new Schema(
   {
@@ -38,7 +39,7 @@ const userSchema = new Schema(
     },
     role: {
       type: String,
-      enum: ["User", "Admin"],
+      enum: Object.values(roleTypes),
       default: "User",
     },
   },
