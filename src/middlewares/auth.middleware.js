@@ -1,6 +1,6 @@
-import jwt from "jsonwebtoken";
 import userModel from "../db/model/User.model.js";
 import { asyncHandler } from "../utils/error/error.handling.js";
+import { verifyToken } from "../utils/token/token.js";
 
 export const roleTypes = {
   User: "User",
@@ -11,11 +11,7 @@ export const roleTypes = {
 export const authentication = asyncHandler(async (req, res, next) => {
   const { authorization } = req.headers; // token
 
-  if (!authorization) {
-    return next(new Error("Authorization is required", { cause: 400 }));
-  }
-
-  const [Bearer, token] = authorization.split(" ");
+  const [Bearer, token] = authorization?.split(" ") || [];
 
   if (!Bearer || !token) {
     return next(new Error("Authorization is required", { cause: 400 }));
@@ -36,7 +32,7 @@ export const authentication = asyncHandler(async (req, res, next) => {
       break;
   }
 
-  const decoded = jwt.verify(token, TOKEN_SIGNATURE); // token payload
+  const decoded = verifyToken({ token, signature: TOKEN_SIGNATURE });
 
   if (!decoded?.id) {
     return next(new Error("In-valid token payload", { cause: 400 })); // decoded object is not exist || it doesn't include the id

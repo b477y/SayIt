@@ -1,9 +1,10 @@
 import userModel from "../../../db/model/User.model.js";
-import bcrypt from "bcryptjs";
-import CryptoJS from "crypto-js";
-import jwt from "jsonwebtoken";
 import { emailEvent } from "../../../events/sendEmail.event.js";
 import { asyncHandler } from "../../../utils/error/error.handling.js";
+import { successResponse } from "../../../utils/response/success.response.js";
+import { generateToken, verifyToken } from "../../../utils/token/token.js";
+import { compareHash, generateHash } from "../../../utils/hash/hash.js";
+import { encrypt } from "../../../utils/crypto/crypto.js";
 
 export const signup = asyncHandler(async (req, res, next) => {
   const { username, email, password, confirmationPassword, phoneNumber, role } =
@@ -38,18 +39,12 @@ export const signup = asyncHandler(async (req, res, next) => {
 
   const existingUser = await userModel.findOne({ email });
   if (existingUser) {
-    return next(new Error("Email is already registered", { cause: 409 }));
+    return next(new Error("Email is already exist", { cause: 409 }));
   }
 
-  const encryptedPhoneNumber = CryptoJS.AES.encrypt(
-    phoneNumber,
-    process.env.PHONE_ENCRYPTION
-  ).toString();
+  const encryptedPhoneNumber = encrypt({ plainText: phoneNumber });
 
-  const hashedPassword = bcrypt.hashSync(
-    password,
-    parseInt(process.env.SALT_ROUNDS)
-  );
+  const hashedPassword = generateHash({ inputString: password });
 
   emailEvent.emit("sendEmail", { email });
 
@@ -63,15 +58,21 @@ export const signup = asyncHandler(async (req, res, next) => {
 
   await userModel.create(user);
 
-  return res.status(201).json({ message: "Registered successfully", user });
+  return successResponse({
+    res,
+    message: "Registered successfully",
+    data: user,
+    status: 201,
+  });
 });
 
 export const confirmEmail = asyncHandler(async (req, res, next) => {
-  const { emailToken } = req.body;
-  const { email } = await jwt.verify(
-    emailToken,
-    process.env.TOKEN_SIGNATURE_EMAIL
-  );
+  const { authorization } = req.headers;
+
+  const { email } = verifyToken({
+    token: authorization,
+    signature: process.env.TOKEN_SIGNATURE_EMAIL,
+  });
 
   const emailConfirmation = await userModel.findOneAndUpdate(
     { email },
@@ -79,10 +80,11 @@ export const confirmEmail = asyncHandler(async (req, res, next) => {
     { new: true }
   );
 
-  console.log(emailConfirmation);
-  return res.status(201).json({
+  return successResponse({
+    res,
     message: "Account email confirmed successfully",
-    confirmEmail: emailConfirmation.confirmEmail,
+    data: emailConfirmation.confirmEmail,
+    status: 201,
   });
 });
 
@@ -106,23 +108,28 @@ export const login = asyncHandler(async (req, res, next) => {
     return next(new Error("Please confirm your email first", { cause: 400 }));
   }
 
-  const checkPassword = bcrypt.compareSync(password, user.password);
+  const checkPassword = compareHash({
+    inputString: password,
+    hashedString: user.password,
+  });
 
   if (!checkPassword) {
     return next(new Error("In-valid credentials", { cause: 404 }));
   }
 
-  const token = jwt.sign(
-    { id: user._id, isLoggedIn: true },
+  const token = generateToken({
+    payload: { id: user._id, isLoggedIn: true },
+    signature:
+      user.role === "Admin"
+        ? process.env.TOKEN_SIGNATURE_ADMIN
+        : process.env.TOKEN_SIGNATURE_USER,
+    options: { expiresIn: "1h" },
+  });
 
-    user.role === "Admin"
-      ? process.env.TOKEN_SIGNATURE_ADMIN
-      : process.env.TOKEN_SIGNATURE_USER,
-
-    {
-      expiresIn: "1h",
-    }
-  );
-
-  return res.status(201).json({ message: "Logged in successfully", token });
+  return successResponse({
+    res,
+    message: "Logged in successfully",
+    data: token,
+    status: 201,
+  });
 });

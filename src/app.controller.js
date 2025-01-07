@@ -1,6 +1,7 @@
 import authController from "./modules/auth/auth.controller.js";
 import userController from "./modules/user/user.controller.js";
 import connectDB from "./db/connection.js";
+import { globalErrorHandling } from "./utils/error/error.handling.js";
 
 const bootstrap = (app, express) => {
   app.use(express.json());
@@ -12,17 +13,7 @@ const bootstrap = (app, express) => {
     return next(new Error("In-valid routing", { cause: 404 }));
   });
 
-  app.use((error, req, res, next) => {
-    if (process.env.ENV === "development") {
-      return res.status(error.cause).json({
-        message: error.message,
-        errorStack: error.stack,
-      });
-    }
-    return res.status(error.cause).json({
-      message: error.message,
-    });
-  });
+  app.use(globalErrorHandling);
 
   connectDB();
 };
