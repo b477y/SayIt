@@ -126,6 +126,18 @@ export const login = asyncHandler(async (req, res, next) => {
     options: { expiresIn: "1h" },
   });
 
+  if (user.isDeleted === true) {
+    user.isDeleted = false;
+    await user.save();
+    return successResponse({
+      res,
+      message:
+        "Your account has been successfully reactivated, and you are now logged in.",
+      data: token,
+      status: 201,
+    });
+  }
+
   return successResponse({
     res,
     message: "Logged in successfully",

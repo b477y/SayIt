@@ -35,7 +35,7 @@ export const authentication = asyncHandler(async (req, res, next) => {
   const decoded = verifyToken({ token, signature: TOKEN_SIGNATURE });
 
   if (!decoded?.id) {
-    return next(new Error("In-valid token payload", { cause: 400 })); // decoded object is not exist || it doesn't include the id
+    return next(new Error("In-valid token payload", { cause: 400 }));
   }
 
   const user = await userModel.findById(decoded.id);
@@ -43,6 +43,13 @@ export const authentication = asyncHandler(async (req, res, next) => {
   if (!user) {
     return next(new Error("Not registered", { cause: 404 }));
   }
+
+  if (
+    parseInt((user.changePasswordTime?.getTime() || 0) / 1000) >= decoded.iat
+  ) {
+    return next(new Error("Expired credentials", { cause: 400 }));
+  }
+
   req.user = user;
   return next();
 });

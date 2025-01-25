@@ -1,6 +1,11 @@
 import mongoose, { Schema, model } from "mongoose";
 import { roleTypes } from "../../middlewares/auth.middleware.js";
 
+export const genderTypes = {
+  male: "male",
+  female: "female",
+};
+
 const userSchema = new Schema(
   {
     username: {
@@ -26,8 +31,8 @@ const userSchema = new Schema(
     },
     gender: {
       type: String,
-      enum: ["male", "female"],
-      default: "male",
+      enum: Object.values(genderTypes),
+      default: genderTypes.male,
     },
     DOB: Date,
     address: String,
@@ -41,6 +46,11 @@ const userSchema = new Schema(
       type: String,
       enum: Object.values(roleTypes),
       default: "User",
+    },
+    changePasswordTime: Date,
+    isDeleted: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
