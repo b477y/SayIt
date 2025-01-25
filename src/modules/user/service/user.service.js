@@ -3,13 +3,21 @@ import { decrypt, encrypt } from "../../../utils/crypto/crypto.js";
 import { successResponse } from "../../../utils/response/success.response.js";
 import userModel from "../../../db/model/User.model.js";
 import { compareHash, generateHash } from "../../../utils/hash/hash.js";
+import messageModel from "../../../db/model/Message.model.js";
 
 export const profile = asyncHandler(async (req, res, next) => {
   req.user.phoneNumber = decrypt({ cipherText: req.user.phoneNumber });
+
+  const recepientId = req.user._id;
+
+  const messages = await messageModel
+    .find({ recepientId })
+    .populate([{ path: "recepientId", select: "_id username email" }]);
+
   return successResponse({
     res,
     message: "Profile retrieved successfully",
-    data: req.user,
+    data: { user: req.user, messages },
     status: 200,
   });
 });
@@ -87,5 +95,22 @@ export const sharedProfile = asyncHandler(async (req, res, next) => {
     message: "User profile retrieved",
     data: user,
     status: 200,
+  });
+});
+
+export const getMessages = asyncHandler(async (req, res, next) => {
+  const recepientId = req.user._id;
+
+  const messages = await messageModel.find({ recepientId });
+
+  if (!messages || messages.length === 0) {
+    return next(new Error("There are no messages to display", { cause: 404 }));
+  }
+
+  return successResponse({
+    res,
+    message: "All messages retrieved successfully",
+    status: 200,
+    data: messages,
   });
 });

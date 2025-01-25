@@ -4,8 +4,7 @@ import { verifyToken } from "../utils/token/token.js";
 
 export const roleTypes = {
   User: "User",
-  Admin: "Admin",
-  HR: "HR",
+  Admin: "Admin"
 };
 
 export const authentication = asyncHandler(async (req, res, next) => {

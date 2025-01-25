@@ -46,4 +46,5 @@ router.get(
   userService.sharedProfile
 );
 
+router.get("/messages", authentication, userService.getMessages);
 export default router;
